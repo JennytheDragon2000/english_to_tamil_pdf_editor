@@ -24,7 +24,10 @@ function App() {
       },
       viewerDiv.current as HTMLDivElement,
     ).then((instance) => {
+      instance.UI.enableFeatures([instance.UI.Feature.SideBySideView]);
+      instance.UI.enableElements(["multiViewerSaveDocumentButton"]);
       instance.UI.enableFeatures([instance.UI.Feature.ContentEdit]);
+      instance.UI.enableFeatures([instance.UI.Feature.FilePicker]);
 
       const { documentViewer } = instance.Core;
 
@@ -74,7 +77,7 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen">
-      <div className="flex-grow" ref={viewerDiv}></div>
+      <div className="flex-grow " ref={viewerDiv}></div>
       <Summary summary={summary} />
     </div>
   );
