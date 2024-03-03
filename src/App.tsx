@@ -1,8 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import "./App.css";
 import WebViewer from "@pdftron/webviewer";
-import * as PDFNet from "@pdftron/pdfnet-node";
 
+function Summary({ summary }) {
+  return (
+    <div className="summary p-4 rounded shadow flex flex-col items-center justify-center">
+      <h2 className="text-2xl font-bold mb-4 text-gray-700">Summary</h2>
+      <div className="w-full bg-gray-200 rounded p-4">{summary}</div>
+    </div>
+  );
+}
 function App() {
   const viewerDiv = useRef<HTMLDivElement>(null);
 
@@ -17,12 +24,12 @@ function App() {
       },
       viewerDiv.current as HTMLDivElement,
     ).then((instance) => {
-      // Move the enableFeatures call inside the then block
       instance.UI.enableFeatures([instance.UI.Feature.ContentEdit]);
 
-      const { documentViewer, annotationManager } = instance.Core;
+      const { documentViewer } = instance.Core;
 
-      documentViewer.addEventListener("documentLoaded", async () => {
+      const handleDocumentLoaded = async () => {
+        const { annotationManager } = instance.Core;
         const doc = documentViewer.getDocument();
         const xfdfString = await annotationManager.exportAnnotations();
         const options = { xfdfString };
@@ -30,9 +37,7 @@ function App() {
         const arr = new Uint8Array(data);
         const blob = new Blob([arr], { type: "application/pdf" });
 
-        // Convert the Blob to a FormData object
         const formData = new FormData();
-        // Change "pdf" to "file" to match the expected key on the server
         formData.append("file", blob, "filename.pdf");
 
         fetch("http://127.0.0.1:5000/upload", {
@@ -41,22 +46,37 @@ function App() {
         })
           .then((response) => response.blob())
           .then((blob) => {
-            // Create a URL for the blob
             const url = URL.createObjectURL(blob);
-            // Load the URL into the WebViewer
-            instance.UI.loadDocument(url, {extension: 'pdf'});
+            instance.UI.loadDocument(url, { extension: "pdf" });
           })
           .catch((error) => {
             console.error("Error sending PDF:", error);
           });
-      });
+
+        instance.Core.documentViewer.removeEventListener(
+          "documentLoaded",
+          handleDocumentLoaded,
+        );
+      };
+
+      documentViewer.addEventListener("documentLoaded", handleDocumentLoaded);
+
+      return () => {
+        instance.Core.documentViewer.removeEventListener(
+          "documentLoaded",
+          handleDocumentLoaded,
+        );
+      };
     });
   }, []);
 
+  let summary = "hello there";
+
   return (
-    <>
-      <div className="w-full h-screen" ref={viewerDiv}></div>
-    </>
+    <div className="flex flex-col h-screen">
+      <div className="flex-grow" ref={viewerDiv}></div>
+      <Summary summary={summary} />
+    </div>
   );
 }
 
