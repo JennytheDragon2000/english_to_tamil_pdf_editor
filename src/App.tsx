@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import WebViewer from "@pdftron/webviewer";
 
@@ -11,16 +11,15 @@ function Summary({ summary }) {
   );
 }
 
-function removeWatermark(data) {}
-
 function App() {
   const viewerDiv = useRef<HTMLDivElement>(null);
+  const [summary, setSummary] = useState("");
 
   useEffect(() => {
     WebViewer(
       {
         path: "lib",
-        initialDoc: "blank-Pdf.pdf",
+        // initialDoc: "blank-Pdf.pdf",
         licenseKey: "LYH6Q-RNN9O-KW676-KTZ7H-RTXUH",
         fullAPI: true,
       },
@@ -79,6 +78,7 @@ function App() {
       const handleDocumentLoaded = async () => {
         const { annotationManager } = instance.Core;
         const doc = documentViewer.getDocument();
+
         const xfdfString = await annotationManager.exportAnnotations();
         const options = { xfdfString };
         const data = await doc.getFileData(options);
@@ -101,10 +101,14 @@ function App() {
             console.error("Error sending PDF:", error);
           });
 
-        instance.Core.documentViewer.removeEventListener(
-          "documentLoaded",
-          handleDocumentLoaded,
-        );
+        const pageCount = doc.getPageCount();
+        let allText = "";
+
+        for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+          const text = await doc.loadPageText(pageNumber);
+          allText += text + "\n"; // Concatenate text from each page with a newline
+        }
+        fetchSummary(allText);
       };
 
       documentViewer.addEventListener("documentLoaded", handleDocumentLoaded);
@@ -118,7 +122,23 @@ function App() {
     });
   }, []);
 
-  let summary = "hello there";
+  async function fetchSummary(textToSummarzie) {
+    try {
+      const response = await fetch("http://128.199.208.234:8999/summarize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: textToSummarzie }),
+      });
+      const data = await response.json();
+      if (data.summary) {
+        setSummary(data.summary); // Assuming you have a state setter for summary
+      }
+    } catch (error) {
+      console.error("Error fetching summary:", error);
+    }
+  }
 
   return (
     <div className="flex flex-col h-screen">
